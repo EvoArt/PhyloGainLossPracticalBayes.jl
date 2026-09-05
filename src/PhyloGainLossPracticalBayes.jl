@@ -32,11 +32,14 @@ using PhyloGainLoss: PhyloGainLoss, felsenstein_loglik, PrunableTree, nnodes
 using Distributions
 using LinearAlgebra
 using Random: AbstractRNG
+using ForwardDiff
+using DiffResults
 
 include("relatedness.jl")
 include("varkernel.jl")
 include("gainloss.jl")
 include("loo.jl")
+include("blockgrad.jl")
 
 # Phylogenetic relatedness, in the same shape the genomics package uses
 export PhyloRelatedness, phylo_relatedness, brownian_covariance
@@ -52,5 +55,8 @@ export gainloss_model, gainloss_pooled_model
 # PosteriorStats extensions, so `PosteriorStats.loo(chn)` and
 # `convert_to_inference_data(chn)` already work on what PracticalBayes returns.
 export pointwise_loglik, blocked_folds, elpd_holdout
+
+# Blockwise-gradient posterior: O(G) instead of O(G^2). See docs/08_performance.md.
+export GainLossPosterior, check_blockgrad
 
 end # module PhyloGainLossPracticalBayes

@@ -16,6 +16,36 @@ fourleaf() = PrunableTree([0, 1, 1, 2, 2, 3, 3],
                           [0.0, 0.3, 0.6, 0.4, 0.55, 0.25, 0.7],
                           ["root", "x", "y", "A", "B", "C", "D"])
 
+# --- helpers -------------------------------------------------------------------------
+
+# A trivial model just to satisfy ModelConditional's field; the kernel never evaluates it.
+@model function _dummy() ; x ~ Normal(0, 1) ; end
+_dummy_model() = _dummy()
+
+_leafnodes(t) = [i for i in 1:PhyloGainLoss.nnodes(t) if PhyloGainLoss.leafindex(t, i) > 0]
+
+"""Forward-simulate true states down the tree; returns a state per node (1 = absent, 2 = present)."""
+function _simulate_states(rng, t, loss, gain)
+    n = PhyloGainLoss.nnodes(t)
+    s = zeros(Int, n)
+    rt = PhyloGainLoss.root(t)
+    s[rt] = rand(rng) < gain / (loss + gain) ? 2 : 1
+    _descend!(rng, s, t, rt, loss, gain)
+    s
+end
+
+function _descend!(rng, s, t, node, loss, gain)
+    for c in PhyloGainLoss.children(t, node)
+        (p11, p12, p21, p22) = transition_probabilities(loss, gain, PhyloGainLoss.branchlength(t, c))
+        s[c] = if s[node] == 1
+            rand(rng) < p12 ? 2 : 1
+        else
+            rand(rng) < p21 ? 1 : 2
+        end
+        _descend!(rng, s, t, c, loss, gain)
+    end
+end
+
 @testset "PhyloGainLossPracticalBayes" begin
 
     @testset "brownian covariance" begin
@@ -186,32 +216,3 @@ fourleaf() = PrunableTree([0, 1, 1, 2, 2, 3, 3],
     end
 end
 
-# --- helpers -------------------------------------------------------------------------
-
-# A trivial model just to satisfy ModelConditional's field; the kernel never evaluates it.
-@model function _dummy() ; x ~ Normal(0, 1) ; end
-_dummy_model() = _dummy()
-
-_leafnodes(t) = [i for i in 1:PhyloGainLoss.nnodes(t) if PhyloGainLoss.leafindex(t, i) > 0]
-
-"""Forward-simulate true states down the tree; returns a state per node (1 = absent, 2 = present)."""
-function _simulate_states(rng, t, loss, gain)
-    n = PhyloGainLoss.nnodes(t)
-    s = zeros(Int, n)
-    rt = PhyloGainLoss.root(t)
-    s[rt] = rand(rng) < gain / (loss + gain) ? 2 : 1
-    _descend!(rng, s, t, rt, loss, gain)
-    s
-end
-
-function _descend!(rng, s, t, node, loss, gain)
-    for c in PhyloGainLoss.children(t, node)
-        (p11, p12, p21, p22) = transition_probabilities(loss, gain, PhyloGainLoss.branchlength(t, c))
-        s[c] = if s[node] == 1
-            rand(rng) < p12 ? 2 : 1
-        else
-            rand(rng) < p21 ? 1 : 2
-        end
-        _descend!(rng, s, t, c, loss, gain)
-    end
-end

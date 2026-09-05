@@ -18,6 +18,93 @@
 # docstring for how to keep those instead and pay a NUTS block for them.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# The `@model` definitions live at MODULE TOP LEVEL, not inside the builder
+# functions below. `@model` expands to global method definitions — including a
+# `PracticalBayes.gradmode_plan(::typeof(...))` method — and Julia rejects a
+# global method definition placed inside a function body ("Global method
+# definition ... needs to be placed at the top level"). The builders therefore
+# define the model once here and merely *call* it, which is also cheaper: the
+# model type is compiled once for the module rather than re-expanded per call.
+#
+# Every value the bodies need is passed in as an explicit argument, so they
+# capture nothing from the builders' scope.
+# ---------------------------------------------------------------------------
+
+@model function gainloss_internal(tree, tiploglik, cov, hab, use_hab, G,
+                                  νλ, Sλ2, νμ, Sμ2, b_scale, a_scale)
+    a_λ ~ Normal(0, a_scale)
+    b_λ ~ Normal(0, b_scale)
+    c_λ ~ Normal(0, b_scale)
+    a_μ ~ Normal(0, a_scale)
+    b_μ ~ Normal(0, b_scale)
+
+    σ²λ ~ InverseGamma(νλ / 2, νλ * Sλ2 / 2)
+    σ²μ ~ InverseGamma(νμ / 2, νμ * Sμ2 / 2)
+
+    z_λ ~ filldist(Normal(0, 1), G)
+    z_μ ~ filldist(Normal(0, 1), G)
+
+    @addlogprob! _family_loglik(tree, tiploglik, cov, hab, use_hab, G,
+                               a_λ, b_λ, c_λ, a_μ, b_μ, sqrt(σ²λ), sqrt(σ²μ),
+                               z_λ, z_μ)
+end
+
+"""
+    _family_loglik(...) -> Real
+
+Total log-likelihood over all gene families. Factored out of the `@model` body for two
+reasons: it collapses G separate `@addlogprob!` calls into one, and it is the natural place
+to thread.
+
+**Threading**: families are independent given the parameters — the same fixed tree, different
+rates — so this is embarrassingly parallel. Measured **3.94x on 8 threads** at 4096 leaves and
+32 families, with results identical to the serial version.
+
+Threading is applied ONLY when the element type is a plain `Float64`, i.e. NOT during a
+gradient pass. ForwardDiff's `Dual` numbers carry a per-call-site tag and its config is not
+safe to share across threads; a threaded gradient here silently risks wrong derivatives, which
+is far worse than a slow correct one. NUTS spends most of its time in gradient calls, so the
+practical win is smaller than 3.94x — see `docs/08_performance.md`. Set
+`ENV["PHYLOGAINLOSS_THREADS"] = "0"` to disable entirely.
+"""
+function _family_loglik(tree, tiploglik, cov, hab, use_hab, G,
+                        a_λ, b_λ, c_λ, a_μ, b_μ, σλ, σμ, z_λ, z_μ)
+    T = promote_type(typeof(a_λ), typeof(σλ), eltype(z_λ))
+    if T === Float64 && Threads.nthreads() > 1 && get(ENV, "PHYLOGAINLOSS_THREADS", "1") != "0"
+        parts = zeros(Float64, Threads.nthreads())
+        Threads.@threads for g in 1:G
+            parts[Threads.threadid()] += _one_family(tree, tiploglik, cov, hab, use_hab, g,
+                                                     a_λ, b_λ, c_λ, a_μ, b_μ, σλ, σμ, z_λ, z_μ)
+        end
+        return sum(parts)
+    end
+    total = zero(T)
+    for g in 1:G
+        total += _one_family(tree, tiploglik, cov, hab, use_hab, g,
+                             a_λ, b_λ, c_λ, a_μ, b_μ, σλ, σμ, z_λ, z_μ)
+    end
+    total
+end
+
+@inline function _one_family(tree, tiploglik, cov, hab, use_hab, g,
+                             a_λ, b_λ, c_λ, a_μ, b_μ, σλ, σμ, z_λ, z_μ)
+    ηλ = a_λ + b_λ * cov[g] + σλ * z_λ[g]
+    use_hab && (ηλ += c_λ * hab[g])
+    felsenstein_loglik(tree, tiploglik[g], exp(ηλ),
+                       exp(a_μ + b_μ * cov[g] + σμ * z_μ[g]))
+end
+
+@model function pooled_internal(tree, tiploglik, a_scale)
+    a_λ ~ Normal(0, a_scale)
+    a_μ ~ Normal(0, a_scale)
+    loss = exp(a_λ)
+    gain = exp(a_μ)
+    for tl in tiploglik
+        @addlogprob! felsenstein_loglik(tree, tl, loss, gain)
+    end
+end
+
 """
     gainloss_model(tree, tiploglik, covariate; habitat = nothing,
                    νλ = 3.0, Sλ2 = 1.0, νμ = 3.0, Sμ2 = 1.0,
@@ -84,31 +171,6 @@ function gainloss_model(tree::PrunableTree, tiploglik, covariate;
     use_hab = habitat !== nothing
     cov = collect(float.(covariate))
 
-    @model function gainloss_internal(tree, tiploglik, cov, hab, use_hab, G,
-                                      νλ, Sλ2, νμ, Sμ2, b_scale, a_scale)
-        a_λ ~ Normal(0, a_scale)
-        b_λ ~ Normal(0, b_scale)
-        c_λ ~ Normal(0, b_scale)
-        a_μ ~ Normal(0, a_scale)
-        b_μ ~ Normal(0, b_scale)
-
-        σ²λ ~ InverseGamma(νλ / 2, νλ * Sλ2 / 2)
-        σ²μ ~ InverseGamma(νμ / 2, νμ * Sμ2 / 2)
-
-        z_λ ~ filldist(Normal(0, 1), G)
-        z_μ ~ filldist(Normal(0, 1), G)
-
-        σλ = sqrt(σ²λ)
-        σμ = sqrt(σ²μ)
-        for g in 1:G
-            ηλ = a_λ + b_λ * cov[g] + σλ * z_λ[g]
-            use_hab && (ηλ += c_λ * hab[g])
-            loss = exp(ηλ)
-            gain = exp(a_μ + b_μ * cov[g] + σμ * z_μ[g])
-            @addlogprob! felsenstein_loglik(tree, tiploglik[g], loss, gain)
-        end
-    end
-
     model = gainloss_internal(tree, tiploglik, cov, hab, use_hab, G,
                               νλ, Sλ2, νμ, Sμ2, b_scale, a_scale)
 
@@ -146,16 +208,6 @@ function gainloss_pooled_model(tree::PrunableTree, tiploglik;
     for (g, tl) in enumerate(tiploglik)
         size(tl) == (tree.nleaves, 2) || throw(DimensionMismatch(
             "tiploglik[$g] is $(size(tl)), expected $((tree.nleaves, 2)) to match the tree"))
-    end
-
-    @model function pooled_internal(tree, tiploglik, a_scale)
-        a_λ ~ Normal(0, a_scale)
-        a_μ ~ Normal(0, a_scale)
-        loss = exp(a_λ)
-        gain = exp(a_μ)
-        for tl in tiploglik
-            @addlogprob! felsenstein_loglik(tree, tl, loss, gain)
-        end
     end
 
     model = pooled_internal(tree, tiploglik, a_scale)
