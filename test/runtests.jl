@@ -121,11 +121,11 @@ end
         @test spl isa Gibbs
         # every assumed variable is in exactly one block — Gibbs checks this on first step
         chain = AbstractMCMC.sample(StableRNG(1), model, spl, 20; progress = false)
-        @test length(chain) == 20
+        @test length(vec(collect(chain[:a_λ]))) == 20
 
         nullmodel, nullspl = gainloss_pooled_model(t, tips)
         nullchain = AbstractMCMC.sample(StableRNG(1), nullmodel, nullspl, 20; progress = false)
-        @test length(nullchain) == 20
+        @test length(vec(collect(nullchain[:a_λ]))) == 20
     end
 
     @testset "builders reject mismatched shapes" begin
@@ -211,7 +211,7 @@ end
 
         model, spl = gainloss_model(t, tips, cov)
         chain = AbstractMCMC.sample(StableRNG(7), model, spl, 400; progress = false)
-        b = [c.b_λ for c in chain[201:end]]
+        b = vec(collect(chain[:b_λ]))[201:end]
         @test mean(b) > 0        # the sign is recovered
     end
 end
