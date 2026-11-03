@@ -67,8 +67,8 @@ right — I checked both:
 
   * PracticalBayes' `ConjugateGibbs` ships only `:beta` and `:dirichlet`, and
     dispatches its draw on `Val(family)` — a clean extension point.
-  * `InvGammaVarKernel` matches it structurally: same `AbstractLatentKernel`
-    supertype, same `latent_step(rng, k, block_names, c)` contract, same
+  * `InvGammaVarKernel` matches it structurally: same `AbstractGibbsKernel`
+    supertype, same `gibbs_step(rng, k, block_names, c)` contract, same
     closure-first constructor so the `do`-block form reads naturally, same
     "user closure supplies the model-specific sufficient statistics" split.
     It IS `ConjugateGibbs` with `family = :invgamma`, where the closure returns

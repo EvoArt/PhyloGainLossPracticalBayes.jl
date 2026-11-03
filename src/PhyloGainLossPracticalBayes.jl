@@ -21,13 +21,13 @@ module PhyloGainLossPracticalBayes
 #
 # On what is and is not a latent block here: unlike an epidemic trajectory, the
 # ancestral states are MARGINALISED by Felsenstein pruning rather than sampled,
-# so there is no discrete block for an `AbstractLatentKernel` to update. The
+# so there is no discrete block for an `AbstractGibbsKernel` to update. The
 # rate parameters are continuous and go through NUTS; only the variance
 # components have closed-form conditionals worth a kernel. `marginal_ancestral`
 # recovers ancestral states after fitting, as a posterior summary.
 
 using PracticalBayes
-using PracticalBayes: AbstractLatentKernel, ModelConditional, latent_step
+using PracticalBayes: AbstractGibbsKernel, ModelConditional, gibbs_step
 using PhyloGainLoss: PhyloGainLoss, felsenstein_loglik, PrunableTree, nnodes
 using Distributions
 using LinearAlgebra

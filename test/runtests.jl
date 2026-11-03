@@ -104,7 +104,7 @@ end
 
         # Minimal stand-in for ModelConditional: the kernel only reads c.values.
         rng = StableRNG(20260905)
-        draws = [PracticalBayes.latent_step(rng, k, (:σ²,),
+        draws = [PracticalBayes.gibbs_step(rng, k, (:σ²,),
                     ModelConditional(_dummy_model(), (; z = z, σ² = 1.0))).σ² for _ in 1:20_000]
         @test mean(draws) ≈ mean(target) rtol = 0.05
         @test std(draws) ≈ std(target) rtol = 0.10

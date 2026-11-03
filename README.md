@@ -47,7 +47,7 @@ rather than costing an AD gradient and an HMC sub-chain each — the same win
 
 **There is no latent Gibbs block.** Unlike an epidemic trajectory, the ancestral states are
 *marginalised* by Felsenstein pruning rather than sampled, so nothing discrete remains for an
-`AbstractLatentKernel` to update. Recover ancestral states after fitting with
+`AbstractGibbsKernel` to update. Recover ancestral states after fitting with
 `PhyloGainLoss.marginal_ancestral`.
 
 ## Phylogenetic random effects

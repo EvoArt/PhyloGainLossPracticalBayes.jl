@@ -16,7 +16,7 @@
     InvGammaVarKernel(name, prior, ss)
     InvGammaVarKernel(ss, name, prior)      # `do`-block form
 
-An `AbstractLatentKernel` that resamples the variance block `name` from its
+An `AbstractGibbsKernel` that resamples the variance block `name` from its
 conjugate Inverse-Gamma full conditional.
 
 The model must place `name ~ InverseGamma(ν/2, ν·S²/2)` on the variance;
@@ -37,7 +37,7 @@ k = InvGammaVarKernel(:σ², (3.0, 1.0)) do c
 end
 ```
 """
-struct InvGammaVarKernel{F} <: AbstractLatentKernel
+struct InvGammaVarKernel{F} <: AbstractGibbsKernel
     name::Symbol
     prior::Tuple{Float64,Float64}
     ss::F
@@ -50,7 +50,7 @@ InvGammaVarKernel(name::Symbol, prior, ss) =
 InvGammaVarKernel(ss, name::Symbol, prior) =
     InvGammaVarKernel(name, (Float64(prior[1]), Float64(prior[2])), ss)
 
-function PracticalBayes.latent_step(rng::AbstractRNG, k::InvGammaVarKernel,
+function PracticalBayes.gibbs_step(rng::AbstractRNG, k::InvGammaVarKernel,
                                     block_names, c::ModelConditional)
     block_names == (k.name,) ||
         error("InvGammaVarKernel owns block $(k.name), got $(block_names)")
