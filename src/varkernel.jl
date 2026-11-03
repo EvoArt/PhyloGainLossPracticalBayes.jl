@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # Conjugate variance-component kernel.
 #
-# Same rationale as ParcticalBayesianGenomics' `InvGammaVarKernel`: a variance
+# Same rationale as PracticalBayesianGenomics' `InvGammaVarKernel`: a variance
 # whose full conditional is closed-form should be drawn exactly, not pushed
 # through NUTS, which costs an AD gradient and an HMC sub-chain for a one-line
 # update and mixes worse.

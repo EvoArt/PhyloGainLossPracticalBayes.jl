@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # The hierarchical gain-loss model, as a one-call builder returning
 # `(model, spl)` — the same interface shape as
-# `ParcticalBayesianGenomics.animal_model` and `PracticalEpiBayes`' blocks.
+# `PracticalBayesianGenomics.animal_model` and `PracticalEpiBayes`' blocks.
 #
 # Blocking rationale (this is the whole reason the package exists):
 #

@@ -39,7 +39,7 @@ pieces you would otherwise hand-write per model.
 `ffbdb1e` is the initial commit and contains everything as that session left it.
 
   * `gainloss.jl` (164) — model builders returning `(model, spl)`, matching the
-    shape of `ParcticalBayesianGenomics.animal_model`
+    shape of `PracticalBayesianGenomics.animal_model`
   * `loo.jl` (137)
   * `relatedness.jl` (157)
   * `varkernel.jl` (61) — the conjugate InverseGamma variance kernel; see below
@@ -61,7 +61,7 @@ no 1.12.7, ~3.5 GB free. Those were cleared afterwards.
 
 ## The one design finding worth acting on
 
-`varkernel.jl` duplicates `ParcticalBayesianGenomics`'s `InvGammaVarKernel`
+`varkernel.jl` duplicates `PracticalBayesianGenomics`'s `InvGammaVarKernel`
 almost exactly. That session flagged it rather than let it spread, and it is
 right — I checked both:
 
@@ -74,7 +74,7 @@ right — I checked both:
     It IS `ConjugateGibbs` with `family = :invgamma`, where the closure returns
     `(n, SS)` instead of counts.
 
-`ParcticalBayesianGenomics/src/variance_kernels.jl` says so itself: "the
+`PracticalBayesianGenomics/src/variance_kernels.jl` says so itself: "the
 Inverse-Gamma sibling of PracticalBayes' own ConjugateGibbs. Same contract."
 
 Three packages now carry the same struct. Upstreaming it into `ConjugateGibbs`
@@ -82,7 +82,7 @@ as a third family is a small change, **but it is Arthur's call** — it widens
 PracticalBayes' public API and commits him to maintaining it. Not done.
 
 If it does land, there is one real design decision: this package (and
-ParcticalBayesianGenomics) take `prior = (ν, S²)` in the scaled-inverse-χ²
+PracticalBayesianGenomics) take `prior = (ν, S²)` in the scaled-inverse-χ²
 parameterisation and convert internally, whereas `ConjugateGibbs` passes
 `prior` straight to the distribution. Either the shared kernel takes
 `InverseGamma` hyperparameters directly (consistent with the existing families,

@@ -22,7 +22,7 @@ chain = sample(model, spl, 2000)
 ```
 
 `gainloss_model` returns `(model, spl)` ready for `AbstractMCMC.sample`, matching
-`ParcticalBayesianGenomics.animal_model`'s convention.
+`PracticalBayesianGenomics.animal_model`'s convention.
 
 Start with the null to check the wiring before fitting the hierarchy:
 
@@ -43,7 +43,7 @@ Gibbs(
 
 The variance components have closed-form Inverse-Gamma conditionals, so they are drawn exactly
 rather than costing an AD gradient and an HMC sub-chain each — the same win
-`ParcticalBayesianGenomics`' `variance_kernels.jl` documents.
+`PracticalBayesianGenomics`' `variance_kernels.jl` documents.
 
 **There is no latent Gibbs block.** Unlike an epidemic trajectory, the ancestral states are
 *marginalised* by Felsenstein pruning rather than sampled, so nothing discrete remains for an

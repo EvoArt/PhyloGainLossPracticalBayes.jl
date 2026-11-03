@@ -4,7 +4,7 @@
 # A phylogenetic random effect is a relatedness structure by another name. Under
 # Brownian motion on a tree, cov(i, j) = the shared path length from the root to
 # tips i and j, which plays exactly the role the numerator relationship matrix A
-# plays in an animal model. ParcticalBayesianGenomics already has the machinery
+# plays in an animal model. PracticalBayesianGenomics already has the machinery
 # for "a precomputed K inverse plus a label saying where it came from", reused
 # every sweep and never re-inverted; this is the fourth constructor for it.
 #
@@ -21,7 +21,7 @@ Holds a precomputed inverse phylogenetic covariance `Kinv` (`K⁻¹`), the `kind
 label (`:brownian` or `:ou`), and the leaf order the matrix is indexed by.
 
 Built ONCE via [`phylo_relatedness`](@ref) and reused every sweep. The same
-contract as `ParcticalBayesianGenomics.RelatednessStructure`: nothing downstream
+contract as `PracticalBayesianGenomics.RelatednessStructure`: nothing downstream
 re-inverts `K`.
 
 `leaf_names` is carried so a caller can check its trait table is in the same
