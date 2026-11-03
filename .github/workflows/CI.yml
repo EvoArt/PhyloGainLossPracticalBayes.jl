@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1.10', '1']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
+
+      - uses: julia-actions/cache@v2
+
+      # PracticalBayes and PhyloGainLoss are not registered yet, so install them
+      # from GitHub before the registered dependencies are resolved.
+      - name: Install unregistered dependencies
+        shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.develop([
+              PackageSpec(url="https://github.com/EvoArt/PracticalBayes.jl"),
+              PackageSpec(url="https://github.com/EvoArt/PhyloGainLoss.jl"),
+          ])
+          Pkg.instantiate()
+
+      - uses: julia-actions/julia-runtest@v1
